@@ -230,7 +230,8 @@ class Object
     float Kd, Ks; 
     Vec3f diffuseColor; 
     float specularExponent;
-    Vec3f albedo = 0.28;
+    Vec3f albedo = 0.4;
+    float intensity = 0.0;
     bool isMesh;
 }; 
  

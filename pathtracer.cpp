@@ -181,6 +181,12 @@ Vec3f castRay(
         Vec3f N; // normal 
         Vec2f st; // st coordinates 
         hitObject->getSurfaceProperties(hitPoint, dir, index, uv, N, st); 
+
+        // If the ray hits an object with intensity, return the intensity as color
+        if(hitObject->intensity != 0.0) return Vec3f(hitObject->intensity,
+                                                     hitObject->intensity,
+                                                     hitObject->intensity);
+
         Vec3f tmp = hitPoint;
         Vec3f reflectionDirection = reflect(dir, N); 
         Vec3f reflectionRayOrig = (dotProduct(reflectionDirection, N) < 0) ? 
@@ -238,7 +244,7 @@ Vec3f castRay(
 
                 
                 Vec3f indirectLighting = 0;
-                uint32_t maxN = 64;
+                uint32_t maxN = 128;
                 Vec3f Nt, Nb;
                 createCoordinateSystem(N, Nt, Nb);
                 float pdf = 1 / (2 * M_PI);
@@ -293,22 +299,25 @@ void render(
 
     for (uint32_t j = 0; j < options.height; ++j) { 
         for (uint32_t i = 0; i < options.width; ++i) { 
-            if ((j*options.width + i) % 100 == 0) std::cout << "pixel : " << j*options.width + i << "/" << options.height * options.width << std::endl; 
+            if ((j*options.width + i) % 1 == 0) std::cout << "pixel : " << j*options.width + i << "/" << options.height * options.width << std::endl; 
+            
             // generate primary ray direction
             float x = (2 * (i + 0.5) / (float)options.width - 1) * imageAspectRatio * scale; 
             float y = (1 - 2 * (j + 0.5) / (float)options.height) * scale; 
             Vec3f dir = normalize(Vec3f(x, y, -1)); 
+            
             *(pix++) = castRay(bvh, orig, dir, objects, lights, options, 0);
             
-            /* // Partial Rendering
-            if (j > options.height/2 && j < options.height/2+20
+            /*
+            // Partial Rendering
+            if (j > options.height/10*8 && j < options.height/10*8+20
                 & i > options.width/2 && i < options.width/2+20){
                 *(pix++) = castRay(bvh, orig, dir, objects, lights, options, 0);
             }
             else {
                 *(pix++) = Vec3f(1,1,1);
-            }
-            */
+            }*/
+            
         } 
     } 
  
@@ -526,6 +535,25 @@ bool addLightRoom(std::vector<std::shared_ptr<Object>> &objects) {
     objects.push_back(std::unique_ptr<Triangle>(ceiling1));
     objects.push_back(std::unique_ptr<Triangle>(ceiling2));
 
+    Triangle *ceilingLight1 = new Triangle(Vec3f(room.pMax.x / 3, room.pMax.y - 0.01, room.pMin.z + 2),
+                                           Vec3f(room.pMin.x / 3, room.pMax.y - 0.01, room.pMin.z + 4),
+                                           Vec3f(room.pMin.x / 3, room.pMax.y - 0.01, room.pMin.z + 2));
+    Triangle *ceilingLight2 = new Triangle(Vec3f(room.pMax.x / 3, room.pMax.y - 0.01, room.pMin.z + 2),
+                                           Vec3f(room.pMax.x / 3, room.pMax.y - 0.01, room.pMin.z + 4),
+                                           Vec3f(room.pMin.x / 3, room.pMax.y - 0.01, room.pMin.z + 4));
+    ceilingLight1->materialType = DIFFUSE_AND_GLOSSY;
+    ceilingLight2->materialType = DIFFUSE_AND_GLOSSY;
+    ceilingLight1->diffuseColor = Vec3f(0.5, 0.5, 0.5);
+    ceilingLight2->diffuseColor = Vec3f(0.5, 0.5, 0.5);
+    ceilingLight1->intensity = 1;
+    ceilingLight2->intensity = 1;
+    //ceiling1->albedo = Vec3f(0.225, 0.144, 0.144);
+    //ceiling2->albedo = Vec3f(0.225, 0.144, 0.144);
+    objects.push_back(std::unique_ptr<Triangle>(ceilingLight1));
+    objects.push_back(std::unique_ptr<Triangle>(ceilingLight2));
+
+
+
     Triangle *back1 = new Triangle(Vec3f(room.pMax.x, room.pMin.y, room.pMin.z),
                                    Vec3f(room.pMin.x, room.pMax.y, room.pMin.z),
                                    Vec3f(room.pMin.x, room.pMin.y, room.pMin.z));
@@ -587,8 +615,8 @@ int main(int argc, char **argv)
     Options options; 
     //options.width = 640; 
     //options.height = 480; 
-    options.width = 100; 
-    options.height = 100; 
+    options.width = 256; 
+    options.height = 256; 
     options.fov = 90; 
     options.backgroundColor = Vec3f(0, 0, 0); 
     options.maxDepth = 2; 
